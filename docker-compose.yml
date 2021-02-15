@@ -1,0 +1,8 @@
+version: '3'
+services:
+  f6tgbot:
+    build: "./"
+    restart: always
+    volumes:
+      - ./bot.db:/app/bot.db
+      - ./Bot.toml:/app/Bot.toml
