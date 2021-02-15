@@ -37,16 +37,17 @@ async fn main() -> Result<(), Error> {
                     }
                     "/remove" => bot.handle_remove_poll(api.clone(), message.clone()).await?,
                     "/poll" => bot.handle_poll(api.clone(), message.clone()).await?,
+                    "/vote" => bot.handle_vote(api.clone(), message.clone()).await?,
                     "/help" => bot.handle_help(api.clone(), message.clone()).await?,
                     "/admin_help" => bot.handle_admin_help(api.clone(), message.clone()).await?,
-                    "/vote" => {
+                    /*"/vote" => {
                         bot.handle_vote(api.clone(), message.clone(), data.to_string())
                             .await?
                     }
                     "/undo" => {
                         bot.handle_undo(api.clone(), message.clone(), data.to_string())
                             .await?
-                    }
+                    }*/
                     //"/add_user" => bot.handle_add_user(api.clone(), message.clone()).await?,
                     "/accept" => bot.handle_accept(api.clone(), message.clone()).await?,
                     "/add_admin" => bot.handle_add_admin(api.clone(), message.clone()).await?,
@@ -56,6 +57,20 @@ async fn main() -> Result<(), Error> {
                     }
                     _ => {}
                 },
+                _ => (),
+            },
+            UpdateKind::CallbackQuery(callback) => match callback
+                .data
+                .clone()
+                .unwrap()
+                .split_whitespace()
+                .nth(0)
+                .unwrap()
+            {
+                "/vote" => {
+                    bot.handle_vote_callback(api.clone(), callback.clone())
+                        .await?
+                }
                 _ => (),
             },
             _ => (),

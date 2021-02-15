@@ -15,15 +15,15 @@ impl PollToken {
     pub fn new(
         nonce_str: String,
         pub_key: String,
+        priv_key: String,
         num: i64,
         user_id: UserId,
         msg_id: MessageId,
-    ) -> (String, PollToken) {
+    ) -> PollToken {
         let mut rng = thread_rng();
-        let priv_key: [u8; AES_KEY_LEN / 2] = rng.gen();
         let mut key = vec![];
         key.append(&mut hex::decode(pub_key).unwrap());
-        key.append(&mut priv_key.to_vec());
+        key.append(&mut hex::decode(priv_key).unwrap());
         let real_key = GenericArray::from_slice(&key);
         let cipher = Aes256GcmSiv::new(real_key);
         assert_eq!(nonce_str.len() <= NONCE_LEN, true);
@@ -33,14 +33,12 @@ impl PollToken {
         let ciphertext = cipher
             .encrypt(real_nonce, num.to_string().as_bytes())
             .expect("encryption failure!");
-        (
-            hex::encode(priv_key),
-            Self {
-                token: hex::encode(ciphertext),
-                user_id,
-                msg_id,
-            },
-        )
+
+        Self {
+            token: hex::encode(ciphertext),
+            user_id,
+            msg_id,
+        }
     }
 
     pub fn decrypt(&self, nonce_str: String, pub_key: String, priv_key: String) -> Result<i64, ()> {
