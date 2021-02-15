@@ -7,8 +7,6 @@ mod token_service;
 
 use futures::StreamExt;
 
-
-
 use telegram_bot::{
     Api, Error, Message, MessageKind, Poll, PollAnswer, SendPoll, UpdateKind, User,
 };
@@ -28,6 +26,11 @@ async fn main() -> Result<(), Error> {
             UpdateKind::Message(message) => match message.kind {
                 MessageKind::Text { ref data, .. } => match data.split_whitespace().nth(0).unwrap()
                 {
+                    "/start" => bot.handle_start(api.clone(), message.clone()).await?,
+                    "/register_chat" => {
+                        bot.handle_register_chat(api.clone(), message.clone())
+                            .await?
+                    }
                     "/create" => {
                         bot.handle_create_poll(api.clone(), message.clone(), data.to_string())
                             .await?
@@ -44,20 +47,14 @@ async fn main() -> Result<(), Error> {
                         bot.handle_undo(api.clone(), message.clone(), data.to_string())
                             .await?
                     }
-                    "/add_user" => bot.handle_add_user(api.clone(), message.clone()).await?,
-                    "/accept" => {
-                        bot.handle_accept(api.clone(), message.clone(), data.to_string())
-                            .await?
-                    }
+                    //"/add_user" => bot.handle_add_user(api.clone(), message.clone()).await?,
+                    "/accept" => bot.handle_accept(api.clone(), message.clone()).await?,
                     "/add_admin" => bot.handle_add_admin(api.clone(), message.clone()).await?,
                     "/accept_admin" => {
                         bot.handle_accept_admin(api.clone(), message.clone(), data.to_string())
                             .await?
                     }
-                    _ => {
-                        bot.handle_unknown_command(api.clone(), message.clone())
-                            .await?
-                    }
+                    _ => {}
                 },
                 _ => (),
             },

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
-use telegram_bot::types::UserId;
+use telegram_bot::types::{ChatId, UserId};
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Security {
@@ -13,7 +13,7 @@ pub struct Config {
     pub token: String,
     pub admins: Vec<(UserId, String)>,
     pub users: Vec<(UserId, String)>,
-    pub group_chat: i64,
+    pub group_chat: ChatId,
     pub security: Security,
 }
 
@@ -31,6 +31,10 @@ impl Config {
 
     pub fn add_user(&mut self, id: UserId, name: String) {
         self.users.push((id, name));
+    }
+
+    pub fn set_group_chat(&mut self, id: ChatId) {
+        self.group_chat = id;
     }
 
     pub fn sync(&self, filename: &str) -> Result<(), std::io::Error> {
