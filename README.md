@@ -1,4 +1,4 @@
-# F⁶ telegram bot
+# vote-bot
 A secure telegram vote bot for F⁶ 
 
 ## How it works?
