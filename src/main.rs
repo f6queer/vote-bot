@@ -71,6 +71,14 @@ async fn main() -> Result<(), Error> {
                     bot.handle_vote_callback(api.clone(), callback.clone())
                         .await?
                 }
+                "/check" => {
+                    bot.handle_check_callback(api.clone(), callback.clone())
+                        .await?
+                }
+                "/clear" => {
+                    bot.handle_clear_callback(api.clone(), callback.clone())
+                        .await?
+                }
                 _ => (),
             },
             _ => (),

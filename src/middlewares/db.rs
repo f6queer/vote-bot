@@ -95,11 +95,11 @@ impl DbService {
         Ok(poll)
     }
 
-    pub fn fetch_token(&mut self, id: UserId) -> Result<Option<PollToken>, sqlite::Error> {
-        let mut res = None;
+    pub fn fetch_token(&mut self, id: UserId) -> Result<Vec<PollToken>, sqlite::Error> {
+        let mut res = vec![];
         self.db
             .iterate(&format!("SELECT * FROM votes WHERE user={}", id), |pairs| {
-                res = Some(PollToken {
+                res.push(PollToken {
                     token: pairs[0].1.unwrap().to_string(),
                     user_id: UserId::new(pairs[1].1.unwrap().parse::<i64>().unwrap()),
                     msg_id: MessageId::new(pairs[2].1.unwrap().parse::<i64>().unwrap()),
@@ -109,9 +109,11 @@ impl DbService {
         Ok(res)
     }
 
-    pub fn remove_token(&mut self, id: UserId) -> Result<(), sqlite::Error> {
-        self.db
-            .execute(&format!("DELETE FROM votes WHERE user={};", id))?;
+    pub fn remove_token(&mut self, id: UserId, token: String) -> Result<(), sqlite::Error> {
+        self.db.execute(&format!(
+            "DELETE FROM votes WHERE user={} AND token='{}';",
+            id, token
+        ))?;
         Ok(())
     }
 

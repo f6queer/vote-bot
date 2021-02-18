@@ -260,6 +260,14 @@ impl Bot {
                         &format!("/vote {} {}", i + 1, hex::encode(priv_key)),
                     )]);
                 }
+                markup.add_row(vec![InlineKeyboardButton::callback(
+                    "투표한 후보 보기",
+                    &format!("/check {}", hex::encode(priv_key)),
+                )]);
+                markup.add_row(vec![InlineKeyboardButton::callback(
+                    "다시 투표하기",
+                    &format!("/clear {}", hex::encode(priv_key)),
+                )]);
                 reply_msg.push_str("투표 방법: 버튼을 클릭하세요.\n");
                 reply_msg.push_str(&format!(
                     "*시작*: {}\n",
@@ -308,6 +316,85 @@ impl Bot {
         Ok(())
     }
 
+    pub async fn handle_check_callback(
+        &mut self,
+        api: Api,
+        callback: CallbackQuery,
+    ) -> Result<(), Error> {
+        let command = callback.data.clone().unwrap();
+        let splited: Vec<String> = command.split_whitespace().map(|s| s.to_string()).collect();
+        if self.is_present {
+            if self.users.contains(&callback.from.id) {
+                let mut cnt = 0;
+                let list = self.db.fetch_token(callback.from.id).unwrap();
+                let mut res = String::new();
+                for t in list.clone() {
+                    if let Ok(vote) = t.decrypt(
+                        self.config.security.nonce.clone(),
+                        self.poll.key.clone(),
+                        splited[1].clone(),
+                    ) {
+                        res.push_str(&format!(
+                            "{}번 후보: {} ",
+                            cnt + 1,
+                            self.poll.candidates[vote as usize - 1]
+                        ));
+                        cnt += 1;
+                    }
+                }
+                if res.is_empty() {
+                    api.send(callback.answer("현재 투표한 후보가 없습니다."))
+                        .await?;
+                } else {
+                    api.send(callback.answer(&res)).await?;
+                }
+            } else {
+                api.send(callback.answer("죄송합니다. 투표는 허용된 유저만 할 수 있습니다."))
+                    .await?;
+            }
+        } else {
+            api.send(callback.answer("죄송합니다. 현재 투표가 진행중이 아닙니다."))
+                .await?;
+        }
+        Ok(())
+    }
+
+    pub async fn handle_clear_callback(
+        &mut self,
+        api: Api,
+        callback: CallbackQuery,
+    ) -> Result<(), Error> {
+        let command = callback.data.clone().unwrap();
+        let splited: Vec<String> = command.split_whitespace().map(|s| s.to_string()).collect();
+        if self.is_present {
+            if self.users.contains(&callback.from.id) {
+                let list = self.db.fetch_token(callback.from.id).unwrap();
+                for t in list.clone() {
+                    if let Ok(vote) = t.decrypt(
+                        self.config.security.nonce.clone(),
+                        self.poll.key.clone(),
+                        splited[1].clone(),
+                    ) {
+                        self.poll.votes[vote as usize - 1] -= 1;
+                        self.db
+                            .update(vote as usize, self.poll.votes[vote as usize - 1])
+                            .ok();
+                        self.db.remove_token(callback.from.id, t.token).ok();
+                    }
+                }
+                api.send(callback.answer("투표가 성공적으로 초기화 되었습니다."))
+                    .await?;
+            } else {
+                api.send(callback.answer("죄송합니다. 투표는 허용된 유저만 할 수 있습니다."))
+                    .await?;
+            }
+        } else {
+            api.send(callback.answer("죄송합니다. 현재 투표가 진행중이 아닙니다."))
+                .await?;
+        }
+        Ok(())
+    }
+
     pub async fn handle_vote_callback(
         &mut self,
         api: Api,
@@ -318,41 +405,79 @@ impl Bot {
         if let Ok(target) = splited[1].parse::<i64>() {
             if self.is_present {
                 if self.users.contains(&callback.from.id) {
-                    let mut failed = false;
-                    if let Some(t) = self.db.fetch_token(callback.from.id).unwrap() {
-                        if let Ok(vote) = t.decrypt(
+                    let mut cnt = 0;
+                    let list = self.db.fetch_token(callback.from.id).unwrap();
+                    for t in list.clone() {
+                        if let Ok(_) = t.decrypt(
                             self.config.security.nonce.clone(),
                             self.poll.key.clone(),
                             splited[2].clone(),
                         ) {
-                            self.poll.votes[vote as usize - 1] -= 1;
-                            self.db
-                                .update(vote as usize, self.poll.votes[vote as usize - 1])
-                                .ok();
-                            self.db.remove_token(callback.from.id).ok();
-                        } else {
-                            failed = true;
-                            api.send(
-                                callback.answer("죄송합니다. 투표한 메시지에서 다시 부탁드립니다."),
-                            )
-                            .await?;
+                            cnt += 1;
                         }
                     }
-                    if !failed {
-                        self.poll.votes[target as usize - 1] += 1;
-                        self.db
-                            .update(target as usize, self.poll.votes[target as usize - 1])
-                            .ok();
-                        let poll_token = PollToken::new(
-                            self.config.security.nonce.clone(),
-                            self.poll.key.clone(),
-                            splited[2].clone(),
-                            target,
-                            callback.from.id,
-                            MessageId::new(0),
-                        );
-                        self.db.insert_token(poll_token).ok();
-                        api.send(callback.answer(&format!("투표해주셔서 감사합니다. {} 후보에게 정상적으로 투표가 완료되었습니다.", self.poll.candidates[target as usize - 1]))).await?;
+                    if cnt == list.len() {
+                        let mut r = 0;
+                        for t in list.clone() {
+                            if let Ok(vote) = t.decrypt(
+                                self.config.security.nonce.clone(),
+                                self.poll.key.clone(),
+                                splited[2].clone(),
+                            ) {
+                                if vote == target {
+                                    self.poll.votes[vote as usize - 1] -= 1;
+                                    self.db
+                                        .update(vote as usize, self.poll.votes[vote as usize - 1])
+                                        .ok();
+                                    self.db.remove_token(callback.from.id, t.token).ok();
+                                    r += 1;
+                                    break;
+                                }
+                            }
+                        }
+                        if r != 0 {
+                            api.send(callback.answer("정상적으로 투표가 취소되었습니다."))
+                                .await?;
+                        } else {
+                            if cnt == 3 {
+                                for t in list.clone() {
+                                    if let Ok(vote) = t.decrypt(
+                                        self.config.security.nonce.clone(),
+                                        self.poll.key.clone(),
+                                        splited[2].clone(),
+                                    ) {
+                                        self.poll.votes[vote as usize - 1] -= 1;
+                                        self.db
+                                            .update(
+                                                vote as usize,
+                                                self.poll.votes[vote as usize - 1],
+                                            )
+                                            .ok();
+                                        self.db.remove_token(callback.from.id, t.token).ok();
+                                        break;
+                                    }
+                                }
+                            }
+                            self.poll.votes[target as usize - 1] += 1;
+                            self.db
+                                .update(target as usize, self.poll.votes[target as usize - 1])
+                                .ok();
+                            let poll_token = PollToken::new(
+                                self.config.security.nonce.clone(),
+                                self.poll.key.clone(),
+                                splited[2].clone(),
+                                target,
+                                callback.from.id,
+                                MessageId::new(0),
+                            );
+                            self.db.insert_token(poll_token).ok();
+                            api.send(callback.answer(&format!("투표해주셔서 감사합니다. {} 후보에게 정상적으로 투표가 완료되었습니다.", self.poll.candidates[target as usize - 1]))).await?;
+                        }
+                    } else {
+                        api.send(
+                            callback.answer("죄송합니다. 투표한 메시지에서 다시 부탁드립니다."),
+                        )
+                        .await?;
                     }
                 } else {
                     api.send(callback.answer("죄송합니다. 투표는 허용된 유저만 할 수 있습니다."))
