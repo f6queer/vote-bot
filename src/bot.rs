@@ -260,14 +260,16 @@ impl Bot {
                         &format!("/vote {} {}", i + 1, hex::encode(priv_key)),
                     )]);
                 }
-                markup.add_row(vec![InlineKeyboardButton::callback(
-                    "투표한 후보 보기",
-                    &format!("/check {}", hex::encode(priv_key)),
-                )]);
-                markup.add_row(vec![InlineKeyboardButton::callback(
-                    "다시 투표하기",
-                    &format!("/clear {}", hex::encode(priv_key)),
-                )]);
+                markup.add_row(vec![
+                    InlineKeyboardButton::callback(
+                        "투표한 후보 보기",
+                        &format!("/check {}", hex::encode(priv_key)),
+                    ),
+                    InlineKeyboardButton::callback(
+                        "다시 투표하기",
+                        &format!("/clear {}", hex::encode(priv_key)),
+                    ),
+                ]);
                 reply_msg.push_str("투표 방법: 버튼을 클릭하세요.\n");
                 reply_msg.push_str(&format!(
                     "*시작*: {}\n",
