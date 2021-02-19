@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate pkg_version;
+
 mod bot;
 mod config;
 mod constants;
@@ -39,6 +42,7 @@ async fn main() -> Result<(), Error> {
                     "/poll" => bot.handle_poll(api.clone(), message.clone()).await?,
                     "/vote" => bot.handle_vote(api.clone(), message.clone()).await?,
                     "/help" => bot.handle_help(api.clone(), message.clone()).await?,
+                    "/about" => bot.handle_about(api.clone(), message.clone()).await?,
                     "/admin_help" => bot.handle_admin_help(api.clone(), message.clone()).await?,
                     /*"/vote" => {
                         bot.handle_vote(api.clone(), message.clone(), data.to_string())

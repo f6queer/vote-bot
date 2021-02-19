@@ -311,6 +311,12 @@ impl Bot {
         Ok(())
     }
 
+    pub async fn handle_about(&self, api: Api, message: Message) -> Result<(), Error> {
+        api.send(message.text_reply(&format!("*F⁶ 임원 선거봇*\n버전: {}.{}.{}", pkg_version_major!(), pkg_version_minor!(), pkg_version_patch!())).parse_mode(ParseMode::Markdown))
+            .await?;
+        Ok(())
+    }
+
     pub async fn handle_admin_help(&self, api: Api, message: Message) -> Result<(), Error> {
         api.send(
             message

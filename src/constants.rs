@@ -3,6 +3,7 @@ pub const DB_PATH: &'static str = "bot.db";
 pub const TITLE_NAME: &'static str = "*F⁶ 임원 선거*";
 pub const HELP: &'static str = "*F⁶ 투표봇 도움말*
 `/start`: 봇을 시작합니다.
+`/about`: 봇의 정보를 보여줍니다.
 `/help`: 도움말을 표시합니다.
 `/poll`: 현재 진행중인 투표를 보여줍니다.
 `/vote`: 투표를 진행합니다.
