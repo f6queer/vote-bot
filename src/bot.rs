@@ -142,6 +142,9 @@ impl Bot {
                             )
                             .await?;
                         } else {
+                            for i in 0..candidates.len() {
+                                candidates[i] = candidates[i].replace("/S/", " ");
+                            }
                             if times <= 0 {
                                 api.send(
                                     message
