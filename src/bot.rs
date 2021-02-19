@@ -199,8 +199,13 @@ impl Bot {
         Ok(())
     }
 
-    pub async fn handle_poll(&self, api: Api, message: Message) -> Result<(), Error> {
+    pub async fn handle_poll(&mut self, api: Api, message: Message) -> Result<(), Error> {
         if self.is_present {
+            let tokens = self.db.tokens().unwrap();
+            let mut users = HashSet::new();
+            for token in tokens {
+                users.insert(token.user_id);
+            }
             let mut reply_msg = format!(
                 "{}\n총 후보 수: {}\n",
                 TITLE_NAME,
@@ -223,6 +228,10 @@ impl Bot {
                 "*종료*: {}\n",
                 Seoul.from_utc_datetime(&NaiveDateTime::from_timestamp(self.poll.end, 0)) //.unwrap()
             ));
+            reply_msg.push_str(&format!(
+                "*투표율*: {:.3}%\n",
+                ((users.len() as f64) / (self.users.len() as f64))*100.0) //.unwrap()
+            );
             markup.add_row(vec![InlineKeyboardButton::url(
                 "투표하러 가기",
                 "https://t.me/F6PollBot",
