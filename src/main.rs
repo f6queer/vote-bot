@@ -27,7 +27,7 @@ async fn main() -> Result<(), Error> {
 
         match update.kind {
             UpdateKind::Message(message) => match message.kind {
-                MessageKind::Text { ref data, .. } => match data.split_whitespace().nth(0).unwrap()
+                MessageKind::Text { ref data, .. } => match data.split_whitespace().nth(0).unwrap().split('@').nth(0).unwrap()
                 {
                     "/start" => bot.handle_start(api.clone(), message.clone()).await?,
                     "/register_chat" => {
