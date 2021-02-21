@@ -112,7 +112,33 @@ impl Bot {
     ) -> Result<(), Error> {
         if self.admins.contains(&message.from.id) {
             if self.is_present {
-                self.remove_poll(api.clone());
+                self.is_present = false;
+                api.send(message.text_reply("투표가 종료되었습니다."))
+                    .await?;
+                let mut result = format!("*결과 안내*\n");
+                let mut res = vec![];
+                for i in 0..self.poll.candidates.len() {
+                    res.push((self.poll.votes[i], i));
+                }
+                res.sort();
+                res.reverse();
+                //use std::cmp::min;
+                for i in 0..self.poll.candidates.len() {
+                    result.push_str(&format!(
+                        "{}위: 기호 {}번 후보자 {} ({}표)\n",
+                        i + 1,
+                        res[i].1 + 1,
+                        self.poll.candidates[res[i].1],
+                        res[i].0
+                    ));
+                }
+                result.push_str("당선을 축하드립니다!");
+                self.db.clear().ok();
+                api.send(message.text_reply(&result).parse_mode(ParseMode::Markdown))
+                    .await?;
+            } else {
+                api.send(message.text_reply("죄송합니다. 아직 투표가 열려있지 않은 것 같습니다."))
+                    .await?;
             }
         } else {
             api.send(
