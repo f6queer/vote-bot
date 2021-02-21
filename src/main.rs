@@ -9,10 +9,22 @@ mod poll_token;
 mod token_service;
 
 use futures::StreamExt;
+use tokio::time::{timeout, Duration};
 
 use telegram_bot::{
     Api, Error, Message, MessageKind, Poll, PollAnswer, SendPoll, UpdateKind, User,
 };
+
+use chrono::prelude::*;
+
+async fn check_poll(bot: &mut bot::Bot, api: Api) {
+    if bot.is_present {
+        //dbg!(bot.poll.end);
+        if bot.poll.end <= Utc::now().timestamp() {
+            bot.remove_poll(api).await.ok();
+        }
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -21,6 +33,7 @@ async fn main() -> Result<(), Error> {
     let api = Api::new(config.token);
     let mut stream = api.stream();
     let mut bot = bot::Bot::new();
+    //timeout(Duration::from_secs(1), check_poll(&mut bot, api.clone())).await.ok();
 
     while let Some(update) = stream.next().await {
         let update = update?;

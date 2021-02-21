@@ -12,6 +12,8 @@ use telegram_bot::prelude::*;
 
 use telegram_bot::types::reply_markup::*;
 use telegram_bot::types::{CallbackQuery, MessageChat, MessageId, ParseMode, UserId};
+use telegram_bot::types::requests::get_chat_members_count::GetChatMembersCount;
+use telegram_bot::types::requests::send_message::SendMessage;
 
 use telegram_bot::{Api, Error, Message};
 
@@ -39,9 +41,9 @@ impl PollService {
 }
 
 pub struct Bot {
-    is_present: bool,
+    pub is_present: bool,
     db: DbService,
-    poll: PollService,
+    pub poll: PollService,
     //user_token: TokenService,
     admin_token: TokenService,
     config: Config,
@@ -74,16 +76,9 @@ impl Bot {
         }
     }
 
-    // ADMIN ONLY
-    pub async fn handle_remove_poll<'p>(
-        &mut self,
-        api: Api,
-        message: Message,
-    ) -> Result<(), Error> {
-        if self.admins.contains(&message.from.id) {
-            if self.is_present {
-                self.is_present = false;
-                api.send(message.text_reply("투표가 종료되었습니다."))
+    pub async fn remove_poll<'p>(&mut self, api: Api) -> Result<(), Error> {
+        self.is_present = false;
+                api.send(SendMessage::new(self.config.group_chat, "투표가 종료되었습니다."))
                     .await?;
                 let mut result = format!("*결과 안내*\n");
                 let mut res = vec![];
@@ -104,11 +99,20 @@ impl Bot {
                 }
                 result.push_str("당선을 축하드립니다!");
                 self.db.clear().ok();
-                api.send(message.text_reply(&result).parse_mode(ParseMode::Markdown))
+                api.send(SendMessage::new(self.config.group_chat, &result).parse_mode(ParseMode::Markdown))
                     .await?;
-            } else {
-                api.send(message.text_reply("죄송합니다. 아직 투표가 열려있지 않은 것 같습니다."))
-                    .await?;
+        Ok(())
+    }
+
+    // ADMIN ONLY
+    pub async fn handle_remove_poll<'p>(
+        &mut self,
+        api: Api,
+        message: Message,
+    ) -> Result<(), Error> {
+        if self.admins.contains(&message.from.id) {
+            if self.is_present {
+                self.remove_poll(api.clone());
             }
         } else {
             api.send(
@@ -228,9 +232,10 @@ impl Bot {
                 "*종료*: {}\n",
                 Seoul.from_utc_datetime(&NaiveDateTime::from_timestamp(self.poll.end, 0)) //.unwrap()
             ));
+            let result: i64 = api.send(GetChatMembersCount::new(self.config.group_chat)).await?;
             reply_msg.push_str(&format!(
                 "*투표율*: {:.3}%\n",
-                ((users.len() as f64) / (self.users.len() as f64))*100.0) //.unwrap()
+                ((users.len() as f64) / ((result-1) as f64))*100.0) //.unwrap()
             );
             markup.add_row(vec![InlineKeyboardButton::url(
                 "투표하러 가기",
